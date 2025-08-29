@@ -75,14 +75,42 @@ def format_multi_news_tweet(news_items):
     tweet_text = "⚽ TOP FOOTBALL NEWS ⚽\n\n"
 
     for i, item in enumerate(news_items, 1):
-        news_line = f"{i}️⃣ {truncate_text(item['title'], 80)}"
+        news_line = f"{i}️⃣ {truncate_text(item['title'], 70)}"
         tweet_text += f"{news_line}\n"
+        tweet_text += f"   🔗 {item['link']}\n\n"
 
-    tweet_text += f"\n📖 Read more:{hashtags}"
+    tweet_text += f"📰 Stay updated!{hashtags}"
 
-    # Ensure tweet doesn't exceed character limit
-    if len(tweet_text) > 280:
-        tweet_text = tweet_text[:275] + "..."
+    return tweet_text
+
+def truncate_tweet_with_links(tweet_text, news_items):
+    """Ensure tweet doesn't exceed character limit while preserving links"""
+    max_length = 280
+    if len(tweet_text) <= max_length:
+        return tweet_text
+
+    # Calculate total length of essential parts
+    base_text = "⚽ TOP FOOTBALL NEWS ⚽\n\n📰 Stay updated! #Football #Soccer #News #Sports #PremierLeague #UCL"
+    available_length = max_length - len(base_text)
+
+    # Calculate average length per news item
+    avg_item_length = available_length // len(news_items)
+
+    tweet_text = "⚽ TOP FOOTBALL NEWS ⚽\n\n"
+
+    for i, item in enumerate(news_items, 1):
+        # Truncate title to fit available space
+        title_max_length = avg_item_length - 15  # Reserve space for numbering and link
+        truncated_title = truncate_text(item['title'], title_max_length)
+
+        tweet_text += f"{i}️⃣ {truncated_title}\n"
+        tweet_text += f"   🔗 {item['link']}\n\n"
+
+    tweet_text += "📰 Stay updated! #Football #Soccer #News #Sports #PremierLeague #UCL"
+
+    # Final truncation if still too long
+    if len(tweet_text) > max_length:
+        tweet_text = tweet_text[:max_length-3] + "..."
 
     return tweet_text
 
@@ -135,8 +163,12 @@ def main():
         logger.error("❌ No suitable news items found")
         return
 
-    # Format tweet
+    # Format tweet with links included
     tweet_text = format_multi_news_tweet(top_news)
+
+    # Ensure tweet doesn't exceed character limit
+    if len(tweet_text) > 280:
+        tweet_text = truncate_tweet_with_links(tweet_text, top_news)
 
     # Try to get and upload image
     media_id = None
@@ -163,16 +195,7 @@ def main():
             response = client.create_tweet(text=tweet_text)
 
         logger.info("✅ Tweet posted successfully!")
-        logger.info(f"📋 Content: {tweet_text}")
-
-        # Add reply with individual links
-        reply_text = "🔗 Read full stories:\n"
-        for i, item in enumerate(top_news, 1):
-            reply_text += f"{i}. {item['link']}\n"
-
-        # Post as reply
-        client.create_tweet(text=reply_text, in_reply_to_tweet_id=response.data['id'])
-        logger.info("✅ Reply with links posted!")
+        logger.info(f"📋 Content length: {len(tweet_text)} characters")
 
     except tweepy.TweepyException as e:
         logger.error(f"❌ Error posting tweet: {e}")
