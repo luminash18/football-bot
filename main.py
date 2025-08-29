@@ -13,6 +13,30 @@ from utils import clean_html, truncate_text, is_valid_url, download_image, find_
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Mapping of RSS feeds to Twitter handles
+SOURCE_HANDLES = {
+    "skysports.com": "@SkySports",
+    "bbc.co.uk": "@BBCSport",
+    "theguardian.com": "@GuardianSport",
+    "premierleague.com": "@premierleague",
+    "uefa.com": "@ChampionsLeague",
+    "marca.com": "@marca",
+    "as.com": "@diarioas",
+    "espn.com": "@ESPNFC",
+    "goal.com": "@goal",
+    "fifa.com": "@FIFAcom",
+    "transfermarkt.com": "@Transfermarkt",
+    "90min.com": "@90min_Football",
+    "mlssoccer.com": "@MLS"
+}
+
+def get_source_handle(url):
+    """Get Twitter handle from URL"""
+    for domain, handle in SOURCE_HANDLES.items():
+        if domain in url:
+            return handle
+    return "@FootballNews"  # Default handle
+
 def load_config():
     try:
         with open('sources.yml', 'r') as file:
@@ -36,8 +60,8 @@ def fetch_news(hours=4):
             for entry in feed.entries:
                 published_time = datetime(*entry.published_parsed[:6])
                 if published_time >= time_threshold:
-                    # Try to extract image from content
                     image_url = find_image_in_content(entry)
+                    source_handle = get_source_handle(entry.get('link', feed_url))
 
                     all_entries.append({
                         'title': entry.title,
@@ -45,7 +69,8 @@ def fetch_news(hours=4):
                         'published': published_time,
                         'summary': clean_html(getattr(entry, 'summary', '')),
                         'image_url': image_url,
-                        'source': feed_url
+                        'source_handle': source_handle,
+                        'source_url': feed_url
                     })
         except Exception as e:
             logger.error(f"Error parsing feed {feed_url}: {e}")
@@ -56,10 +81,7 @@ def select_top_news(news_items, count=3):
     if not news_items:
         return []
 
-    # Filter out short titles and select top recent news
     valid_items = [item for item in news_items if len(item['title']) > 15]
-
-    # Prioritize items with images
     items_with_images = [item for item in valid_items if item.get('image_url')]
     items_without_images = [item for item in valid_items if not item.get('image_url')]
 
@@ -70,52 +92,44 @@ def select_top_news(news_items, count=3):
     return selected
 
 def format_multi_news_tweet(news_items):
-    hashtags = " #Football #Soccer #News #Sports #PremierLeague #UCL"
+    hashtags = " #Football #Soccer #News #PremierLeague #UCL #Transfers"
 
     tweet_text = "⚽ TOP FOOTBALL NEWS ⚽\n\n"
 
     for i, item in enumerate(news_items, 1):
-        news_line = f"{i}️⃣ {truncate_text(item['title'], 70)}"
-        tweet_text += f"{news_line}\n"
-        tweet_text += f"   🔗 {item['link']}\n\n"
+        # Combine title and source handle in brackets
+        news_line = f"{i}️⃣ {truncate_text(item['title'], 75)} ({item['source_handle']})"
+        tweet_text += f"{news_line}\n\n"
 
-    tweet_text += f"📰 Stay updated!{hashtags}"
+    tweet_text += f"Follow for more updates!{hashtags}"
 
     return tweet_text
 
-def truncate_tweet_with_links(tweet_text, news_items):
-    """Ensure tweet doesn't exceed character limit while preserving links"""
+def truncate_tweet_with_handles(tweet_text, news_items):
     max_length = 280
     if len(tweet_text) <= max_length:
         return tweet_text
 
-    # Calculate total length of essential parts
-    base_text = "⚽ TOP FOOTBALL NEWS ⚽\n\n📰 Stay updated! #Football #Soccer #News #Sports #PremierLeague #UCL"
+    base_text = "⚽ TOP FOOTBALL NEWS ⚽\n\nFollow for more updates! #Football #Soccer #News #PremierLeague #UCL #Transfers"
     available_length = max_length - len(base_text)
-
-    # Calculate average length per news item
     avg_item_length = available_length // len(news_items)
 
     tweet_text = "⚽ TOP FOOTBALL NEWS ⚽\n\n"
 
     for i, item in enumerate(news_items, 1):
-        # Truncate title to fit available space
-        title_max_length = avg_item_length - 15  # Reserve space for numbering and link
+        title_max_length = avg_item_length - len(item['source_handle']) - 5  # Space for numbering and brackets
         truncated_title = truncate_text(item['title'], title_max_length)
 
-        tweet_text += f"{i}️⃣ {truncated_title}\n"
-        tweet_text += f"   🔗 {item['link']}\n\n"
+        tweet_text += f"{i}️⃣ {truncated_title} ({item['source_handle']})\n\n"
 
-    tweet_text += "📰 Stay updated! #Football #Soccer #News #Sports #PremierLeague #UCL"
+    tweet_text += "Follow for more updates! #Football #Soccer #News #PremierLeague #UCL #Transfers"
 
-    # Final truncation if still too long
     if len(tweet_text) > max_length:
         tweet_text = tweet_text[:max_length-3] + "..."
 
     return tweet_text
 
 def get_best_image(news_items):
-    """Select the best image from news items (prioritize larger images)"""
     for item in news_items:
         if item.get('image_url'):
             return item['image_url']
@@ -133,7 +147,6 @@ def main():
         logger.error("❌ Missing Twitter API credentials")
         return
 
-    # Initialize Twitter client
     client = tweepy.Client(
         consumer_key=api_key,
         consumer_secret=api_secret,
@@ -142,13 +155,11 @@ def main():
         bearer_token=bearer_token
     )
 
-    # Initialize OAuth1 for media upload
     auth = tweepy.OAuth1UserHandler(
         api_key, api_secret, access_token, access_token_secret
     )
     api = tweepy.API(auth)
 
-    # Fetch news from last 4 hours
     logger.info("📰 Fetching football news from last 4 hours...")
     news_items = fetch_news(hours=4)
 
@@ -156,21 +167,17 @@ def main():
         logger.error("❌ No recent news found")
         return
 
-    # Select top 3 news items
     top_news = select_top_news(news_items, count=3)
 
     if not top_news:
         logger.error("❌ No suitable news items found")
         return
 
-    # Format tweet with links included
     tweet_text = format_multi_news_tweet(top_news)
 
-    # Ensure tweet doesn't exceed character limit
     if len(tweet_text) > 280:
-        tweet_text = truncate_tweet_with_links(tweet_text, top_news)
+        tweet_text = truncate_tweet_with_handles(tweet_text, top_news)
 
-    # Try to get and upload image
     media_id = None
     image_url = get_best_image(top_news)
 
@@ -181,13 +188,11 @@ def main():
                 media = api.media_upload(image_path)
                 media_id = media.media_id
                 logger.info(f"✅ Image uploaded successfully: {image_url}")
-                # Clean up temporary file
                 if os.path.exists(image_path):
                     os.remove(image_path)
         except Exception as e:
             logger.error(f"❌ Error uploading image: {e}")
 
-    # Post tweet
     try:
         if media_id:
             response = client.create_tweet(text=tweet_text, media_ids=[media_id])
@@ -196,6 +201,7 @@ def main():
 
         logger.info("✅ Tweet posted successfully!")
         logger.info(f"📋 Content length: {len(tweet_text)} characters")
+        logger.info(f"📝 Tweet content:\n{tweet_text}")
 
     except tweepy.TweepyException as e:
         logger.error(f"❌ Error posting tweet: {e}")
