@@ -2,7 +2,7 @@ name: Post Football News to X
 
 on:
   schedule:
-    - cron: '0 8,12,16,20 * * *'  # Run at 8AM, 12PM, 4PM, 8PM UTC (4 times daily)
+    - cron: '0 8,12,16,20 * * *'  # Run at 8AM, 12PM, 4PM, 8PM UTC
   workflow_dispatch:
 
 jobs:
@@ -34,6 +34,6 @@ jobs:
         API_SECRET: ${{ secrets.API_SECRET }}
         ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
         ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
-        BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}
+        BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}  # ← This line is crucial!
       run: |
         python main.py
