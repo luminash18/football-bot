@@ -110,76 +110,65 @@ def fetch_news(hours=4):
 
     return sorted(all_entries, key=lambda x: x['published'], reverse=True)
 
-def select_top_news(news_items, count=3):
+def select_best_news(news_items):
+    """Select the single best news item (prioritize those with images)"""
     if not news_items:
-        return []
+        return None
 
+    # Prioritize items with images
+    items_with_images = [item for item in news_items if item.get('image_url')]
+    if items_with_images:
+        return random.choice(items_with_images)
+
+    # If no images, return any valid news item
     valid_items = [item for item in news_items if len(item['title']) > 15]
-    items_with_images = [item for item in valid_items if item.get('image_url')]
-    items_without_images = [item for item in valid_items if not item.get('image_url')]
+    if valid_items:
+        return random.choice(valid_items)
 
-    selected = items_with_images[:count]
-    if len(selected) < count:
-        selected.extend(items_without_images[:count - len(selected)])
+    return None
 
-    return selected
+def format_single_news_tweet(news_item):
+    """Format a single complete news story"""
+    hashtags = " #Football #Soccer #News #PremierLeague #UCL"
 
-def format_multi_news_tweet(news_items):
-    hashtags = " #Football #Soccer #News #PremierLeague #UCL #Transfers"
-
-    tweet_text = "⚽ TOP FOOTBALL NEWS ⚽\n\n"
-
-    for i, item in enumerate(news_items, 1):
-        news_line = f"{i}️⃣ {truncate_text(item['title'], 75)} ({item['source_handle']})"
-        tweet_text += f"{news_line}\n\n"
-
+    tweet_text = f"⚽ BREAKING: {news_item['title']}\n\n"
+    tweet_text += f"📰 Source: {news_item['source_handle']}\n"
+    tweet_text += f"🔗 Read more: {news_item['link']}\n\n"
     tweet_text += f"Follow for more updates!{hashtags}"
 
     return tweet_text
 
-def format_transfer_tweet(transfer_rumors):
-    """Format transfer rumors into a tweet"""
-    if not transfer_rumors:
-        return None
-
+def format_transfer_tweet(transfer_rumor):
+    """Format a single transfer rumor into a tweet"""
     hashtags = " #TransferNews #Rumors #Football #Soccer #Transfers"
 
-    tweet_text = "🔁 TRANSFER RUMOR ROUNDUP 🔁\n\n"
-
-    # Take top 3 transfer rumors
-    for i, rumor in enumerate(transfer_rumors[:3], 1):
-        rumor_line = f"{i}️⃣ {truncate_text(rumor['title'], 80)}"
-        tweet_text += f"{rumor_line}\n\n"
-
-    tweet_text += f"Source: @Transfermarkt{hashtags}"
+    tweet_text = f"🔁 TRANSFER RUMOR: {transfer_rumor['title']}\n\n"
+    tweet_text += f"📰 Source: @Transfermarkt\n"
+    tweet_text += f"🔗 Read more: {transfer_rumor['link']}\n\n"
+    tweet_text += f"Stay tuned for updates!{hashtags}"
 
     return tweet_text
 
-def post_transfer_rumors(client, api):
-    """Post actual transfer rumors from Transfermarkt"""
+def post_transfer_rumor(client, api):
+    """Post a single transfer rumor from Transfermarkt"""
     transfer_rumors = fetch_transfer_rumors()
 
     if not transfer_rumors:
         logger.warning("❌ No transfer rumors found either")
         return None
 
-    tweet_text = format_transfer_tweet(transfer_rumors)
-
-    if not tweet_text:
-        return None
-
-    # Ensure tweet doesn't exceed character limit
-    if len(tweet_text) > 280:
-        tweet_text = truncate_text(tweet_text, 280)
+    # Select the most recent transfer rumor
+    transfer_rumor = transfer_rumors[0]
+    tweet_text = format_transfer_tweet(transfer_rumor)
 
     logger.info(f"📋 Transfer rumor tweet: {tweet_text}")
 
     try:
         response = client.create_tweet(text=tweet_text)
-        logger.info("✅ Transfer rumors posted successfully!")
+        logger.info("✅ Transfer rumor posted successfully!")
         return response
     except tweepy.TweepyException as e:
-        logger.error(f"❌ Error posting transfer rumors: {e}")
+        logger.error(f"❌ Error posting transfer rumor: {e}")
         return None
 
 def main():
@@ -212,23 +201,25 @@ def main():
 
     if not news_items:
         logger.warning("❌ No recent news found - checking for transfer rumors...")
-        post_transfer_rumors(client, api)
+        post_transfer_rumor(client, api)
         return
 
-    top_news = select_top_news(news_items, count=3)
+    best_news = select_best_news(news_items)
 
-    if not top_news:
+    if not best_news:
         logger.warning("❌ No suitable news items found - checking for transfer rumors...")
-        post_transfer_rumors(client, api)
+        post_transfer_rumor(client, api)
         return
 
-    tweet_text = format_multi_news_tweet(top_news)
+    tweet_text = format_single_news_tweet(best_news)
 
+    # Ensure tweet doesn't exceed character limit (though it should be fine with full story)
     if len(tweet_text) > 280:
-        tweet_text = truncate_text(tweet_text, 280)
+        # Only truncate if absolutely necessary, but keep the link intact
+        tweet_text = truncate_text(tweet_text, 275) + "..."
 
     media_id = None
-    image_url = get_best_image(top_news)
+    image_url = best_news.get('image_url')
 
     if image_url:
         try:
@@ -250,6 +241,7 @@ def main():
 
         logger.info("✅ Tweet posted successfully!")
         logger.info(f"📋 Content length: {len(tweet_text)} characters")
+        logger.info(f"📝 Full story: {best_news['title']}")
 
     except tweepy.TweepyException as e:
         logger.error(f"❌ Error posting tweet: {e}")
