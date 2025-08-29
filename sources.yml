@@ -1,0 +1,3 @@
+rss_feeds:
+  - "http://feeds.bbci.co.uk/sport/football/rss.xml"
+  - "https://www.espn.com/espn/rss/soccer/news"

@@ -1,0 +1,6 @@
+tweepy
+feedparser
+python-dotenv
+PyYAML
+beautifulsoup4
+requests
