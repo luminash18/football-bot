@@ -1,18 +1,2 @@
 rss_feeds:
-  # Premier League & English Football
-  - "https://www.skysports.com/rss/12040"
-  - "https://www.espn.com/espn/rss/soccer/news"
-  - "https://www.theguardian.com/football/rss"
-  - "https://www.bbc.co.uk/sport/football/rss"
-
-  # European Football
-  - "https://www.uefa.com/rssfeed/uefacom=news.rss"
-  - "https://www.marca.com/rss/futbol.xml"
-  - "https://as.com/rss/tags/futbol.xml"
-
-  # International & Transfers
-  - "https://www.goal.com/rss/en-us"
-  - "https://www.transfermarkt.com/rss/news"
-
-  # Major League Soccer
-  - "https://www.mlssoccer.com/rss/news"
+  "https://www.theguardian.com/football/rss"
