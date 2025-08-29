@@ -4,3 +4,5 @@ python-dotenv
 PyYAML
 beautifulsoup4
 requests
+Pillow
+python-magic
