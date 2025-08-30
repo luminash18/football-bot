@@ -6,6 +6,33 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 from utils import truncate_text, download_image
 
+def get_daily_football_stat():
+    """
+    Scrape a football stat of the day from Transfermarkt (or other public stats site)
+    Returns: (stat_text, stat_image_url or None)
+    """
+    url = "https://www.transfermarkt.com/statistik"
+    try:
+        resp = requests.get(url, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        # Example: Grab headline stat from Transfermarkt, adapt as needed
+        stat_card = soup.find("div", class_="statistik-startseite-box")
+        if stat_card:
+            headline = stat_card.find("strong")
+            stat_text = headline.get_text(strip=True) if headline else None
+            # Try to find a related image
+            img_tag = stat_card.find("img")
+            stat_img = img_tag["src"] if img_tag else None
+            # Compose a friendly stat message
+            fact = f"Football Stat of the Day: {stat_text}" if stat_text else ''
+            return (fact, stat_img)
+        # fallback: default message
+        return ("Here's your football stat of the day!", None)
+    except Exception as e:
+        logger.error(f"Error fetching daily football stat: {e}")
+        return ("Here's your football stat of the day!", None)
+
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -145,8 +172,30 @@ def post_news_on_x():
         except Exception as e:
             logger.error(f"❌ Unexpected error: {e}")
 
+
     if not posted:
-        logger.info("❌ No new news to post!")
+      logger.info("❌ No new news to post! Posting a football stat instead...")
+      stat_text, stat_img_url = get_daily_football_stat()
+      media_id = None
+      if stat_img_url:
+          image_path = download_image(stat_img_url)
+          if image_path:
+              try:
+                  media = api.media_upload(image_path)
+                  media_id = media.media_id
+                  os.remove(image_path)
+              except Exception as e:
+                  logger.error(f"❌ Error uploading stat image: {e}")
+      try:
+          if media_id:
+              response = client.create_tweet(text=stat_text, media_ids=[media_id])
+          else:
+              response = client.create_tweet(text=stat_text)
+          logger.info("✅ Football stat posted successfully!")
+      except tweepy.TweepyException as e:
+          logger.error(f"❌ Error posting stat tweet: {e}")
+      except Exception as e:
+          logger.error(f"❌ Unexpected error: {e}")
 
 def main():
     post_news_on_x()
