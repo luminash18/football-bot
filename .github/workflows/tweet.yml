@@ -1,39 +1,31 @@
-name: Post Football News to X
-
+name: Post Football News
 on:
   schedule:
-    - cron: '0 8,12,16,20 * * *'  # Run at 8AM, 12PM, 4PM, 8PM UTC
+    # 10:00, 14:00, 18:00, 22:00 IST = 04:30, 08:30, 12:30, 16:30 UTC
+    - cron: '30 4 * * *'
+    - cron: '30 8 * * *'
+    - cron: '30 12 * * *'
+    - cron: '30 16 * * *'
   workflow_dispatch:
-
 jobs:
-  tweet:
+  build:
     runs-on: ubuntu-latest
-    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libmagic1
-
-    - name: Install Python dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-
-    - name: Post football news roundup
-      env:
-        API_KEY: ${{ secrets.API_KEY }}
-        API_SECRET: ${{ secrets.API_SECRET }}
-        ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-        ACCESS_TOKEN_SECRET: ${{ secrets.ACCESS_TOKEN_SECRET }}
-        BEARER_TOKEN: ${{ secrets.BEARER_TOKEN }}  # ← This line is crucial!
-      run: |
-        python main.py
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Run bot
+        run: python main.py
+      - name: Commit posted_goal_urls.txt
+        run: |
+          git config --local user.email "actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add posted_goal_urls.txt
+          git commit -m "update posted URLs" || echo "No changes"
+          git push
