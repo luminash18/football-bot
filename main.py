@@ -16,7 +16,6 @@ RSS_FEEDS = [
     "https://www.skysports.com/rss/12040",
     "https://feeds.bbci.co.uk/sport/football/rss.xml",
     "https://www.theguardian.com/football/rss",
-    # Add more feeds from your README here
 ]
 
 POSTED_URLS_FILE = "posted_urls.txt"
@@ -27,9 +26,18 @@ def get_twitter_api():
     access_token = os.getenv("ACCESS_TOKEN")
     access_token_secret = os.getenv("ACCESS_TOKEN_SECRET")
     bearer_token = os.getenv("BEARER_TOKEN")
+
+    # Debug logging to see what's being loaded
+    logger.info(f"API_KEY found: {bool(api_key)}")
+    logger.info(f"API_SECRET found: {bool(api_secret)}")
+    logger.info(f"ACCESS_TOKEN found: {bool(access_token)}")
+    logger.info(f"ACCESS_TOKEN_SECRET found: {bool(access_token_secret)}")
+
     if not all([api_key, api_secret, access_token, access_token_secret]):
         logger.error("❌ Missing Twitter API credentials")
+        logger.error("Please set API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET environment variables")
         return None, None
+
     client = tweepy.Client(
         consumer_key=api_key,
         consumer_secret=api_secret,
@@ -105,6 +113,16 @@ def fetch_news_from_rss():
     logger.info(f"🔍 Found {len(all_news)} recent news articles from RSS feeds")
     return all_news
 
+def get_twitter_handle_from_source(source_url):
+    """Map RSS feed URL to Twitter handle"""
+    handle_map = {
+        "https://www.goal.com/feeds/en/news": "@goal",
+        "https://www.skysports.com/rss/12040": "@SkySports",
+        "https://feeds.bbci.co.uk/sport/football/rss.xml": "@BBCSport",
+        "https://www.theguardian.com/football/rss": "@GuardianSport",
+    }
+    return handle_map.get(source_url, "")
+
 def format_tweet(news_item):
     """Format a tweet from news item"""
     hashtags = get_hashtags_from_headline(news_item['title'])
@@ -130,17 +148,6 @@ def format_tweet(news_item):
         tweet_text = truncate_text(tweet_text, 275) + "..."
 
     return tweet_text
-
-def get_twitter_handle_from_source(source_url):
-    """Map RSS feed URL to Twitter handle"""
-    handle_map = {
-        "https://www.goal.com/feeds/en/news": "@goal",
-        "https://www.skysports.com/rss/12040": "@SkySports",
-        "https://feeds.bbci.co.uk/sport/football/rss.xml": "@BBCSport",
-        "https://www.theguardian.com/football/rss": "@GuardianSport",
-        # Add more mappings as needed
-    }
-    return handle_map.get(source_url, "")
 
 def post_news_on_x():
     client, api = get_twitter_api()
