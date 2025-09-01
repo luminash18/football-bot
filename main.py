@@ -4,7 +4,7 @@ import logging
 import requests
 import feedparser
 from datetime import datetime, timedelta
-from utils import truncate_text, download_image, get_hashtags_from_headline
+from utils import truncate_text, download_image, get_hashtags_from_headline, get_twitter_handle_from_source
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -112,16 +112,6 @@ def fetch_news_from_rss():
     all_news.sort(key=lambda x: x['published'], reverse=True)
     logger.info(f"🔍 Found {len(all_news)} recent news articles from RSS feeds")
     return all_news
-
-def get_twitter_handle_from_source(source_url):
-    """Map RSS feed URL to Twitter handle"""
-    handle_map = {
-        "https://www.goal.com/feeds/en/news": "@goal",
-        "https://www.skysports.com/rss/12040": "@SkySports",
-        "https://feeds.bbci.co.uk/sport/football/rss.xml": "@BBCSport",
-        "https://www.theguardian.com/football/rss": "@GuardianSport",
-    }
-    return handle_map.get(source_url, "")
 
 def format_tweet(news_item):
     """Format a tweet from news item"""
