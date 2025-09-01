@@ -128,20 +128,22 @@ def format_tweet(news_item):
     hashtags = get_hashtags_from_headline(news_item['title'])
     source_handle = get_twitter_handle_from_source(news_item['source'])
     
-    tweet_text = f"⚽ {news_item['title']}\n\n"
+    # Create a complete sentence with title and summary
+    tweet_text = f"⚽ {news_item['title']}"
+    
     if news_item['summary']:
-        # Clean the summary and truncate if needed
+        # Clean the summary and add it as a complete sentence
         clean_summary = news_item['summary'].split('.')[0]  # Take first sentence
-        if len(clean_summary) > 120:
-            clean_summary = clean_summary[:117] + '...'
-        tweet_text += f"{clean_summary}\n\n"
+        clean_summary = clean_summary.strip()
+        if clean_summary:
+            tweet_text += f". {clean_summary}"
     
-    tweet_text += f"🔗 Read more: {news_item['link']}\n"
-    
+    # Add source handle
     if source_handle:
-        tweet_text += f"Via {source_handle}\n"
+        tweet_text += f" {source_handle}"
     
-    tweet_text += ' '.join(hashtags[:3])  # Use up to 3 hashtags
+    # Add hashtags
+    tweet_text += ' ' + ' '.join(hashtags[:3])  # Use up to 3 hashtags
     
     # Truncate if needed
     if len(tweet_text) > 280:
