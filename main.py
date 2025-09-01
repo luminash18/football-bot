@@ -5,6 +5,18 @@ import requests
 import feedparser
 from datetime import datetime, timedeltafrom utils import download_image, get_hashtags_from_headline, get_twitter_handle_from_source
 
+
+def truncate_text(text, max_length):
+    """Truncate text to maximum length without breaking words"""
+    if len(text) <= max_length:
+        return text
+    truncated = text[:max_length-3]
+    last_space = truncated.rfind(' ')
+    if last_space > 0:
+        truncated = truncated[:last_space]
+    return truncated + '...'
+
+
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
