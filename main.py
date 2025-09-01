@@ -3,8 +3,7 @@ import os
 import logging
 import requests
 import feedparser
-from datetime import datetime, timedelta
-from utils import truncate_text, download_image, get_hashtags_from_headline, get_twitter_handle_from_source
+from datetime import datetime, timedeltafrom utils import download_image, get_hashtags_from_headline, get_twitter_handle_from_source
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
