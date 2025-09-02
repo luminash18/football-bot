@@ -23,7 +23,6 @@ def truncate_text(text, max_length):
 # RSS feeds for football news (add more as needed)
 RSS_FEEDS = [
     "https://www.goal.com/feeds/en/news",
-    "https://www.skysports.com/rss/12040",
     "https://feeds.bbci.co.uk/sport/football/rss.xml",
     "https://www.theguardian.com/football/rss",
 ]
